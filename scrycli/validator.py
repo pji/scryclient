@@ -49,6 +49,10 @@ vals = {
                  'devoid', 'tombstone', 'colorshifted', 'sunmoondfc', 
                  'compasslanddfc', 'originpwdfc', 'mooneldrazidfc'],
     },
+    'frame': {
+        'validtype': str,
+        'enum': ['1993', '1997', '2003', '2015', 'future',]
+    },
     'games': {
         'validtype': str,
         'enum': ['paper', 'arena', 'mtgo']
@@ -73,7 +77,7 @@ vals = {
         'enum': ['normal', 'split', 'flip', 'transform', 'meld',
                  'leveler', 'saga', 'planar', 'scheme', 'vanguard',
                  'token', 'double_faced_token', 'emblem', 'augment',
-                 'host', '2015',],},
+                 'host'],},
     'legality': {
         'validtype': str,
         'enum': ['legal', 'not_legal', 'restricted', 'banned'],
@@ -98,7 +102,7 @@ vals = {
     },
     'object': {
         'validtype': str,
-        'enum': ['card', 'card_face', 'related_card', 'set',]
+        'enum': ['card', 'card_face', 'related_card', 'set', 'list']
     },
     'rarity': {
         'validtype': str,
@@ -251,7 +255,7 @@ def isvaliddict(d, name: str, s_req: dict = {}, s_opt: dict = {},
         
         # If it's not a required or optional key, it's invalid.
         else:
-            print(key)
+            #print(key)
             raise ValueError(badvalue.format(name))
     
     # If any required keys weren't crossed-off, it's invalid.
@@ -280,6 +284,12 @@ def isvalidcomplexlist(L, name, validator=None, **kwargs):
     return True
 
 
+def ismanacostlist(s, name='mana cost'):
+    """Validation for the scryfall.com mana cost string."""
+    mc = parse_manacost(s)
+    return isvalidlist(mc, name, **vals['manacost'])
+
+
 # Object validators.
 def isimageuris(d, name='image uris'):
     """Validator for image_uris."""
@@ -290,12 +300,6 @@ def isimageuris(d, name='image uris'):
              "art_crop": (isurl, vals['url_img']),
              "border_crop": (isurl, vals['url_img']),}
     return isvaliddict(d, name, c_opt=c_opt)
-
-
-def ismanacostlist(s, name='mana cost'):
-    """Validation for the scryfall.com mana cost string."""
-    mc = parse_manacost(s)
-    return isvalidlist(mc, name, **vals['manacost'])
 
 
 def iscardfaceobject(d, name='card_face object'):
@@ -391,12 +395,6 @@ def isset(d, name='set object'):
                        c_req=c_req, c_opt=c_opt)
             
 
-def issetlist(L, name='sets list'):
-    """Validator for a list of set objects."""
-    isvalidcomplexlist(L, name, validator=isset)
-    return True
-
-
 def iscard(d, name='card object'):
     """Validation for the scryfall.com card object."""
     s_req = {'id': vals['id'],
@@ -414,7 +412,7 @@ def iscard(d, name='card object'):
              'border_color': vals['border'],
              'collector_number': vals['text'],
              'digital': vals['boolean'],
-             'frame': vals['layout'],
+             'frame': vals['frame'],
              'frame_effect': vals['effect'],
              'full_art': vals['boolean'],
              'highres_image': vals['boolean'],
@@ -479,9 +477,27 @@ def iscard(d, name='card object'):
         raise ValueError(str(err))
 
 
+def isscrylist(d, name='scryfall list', val=None, valkwargs={}):
+    """Validator for scryfall.com list objects."""
+    s_req = {'object': vals['object'],
+             'has_more': vals['boolean'],}
+    s_opt = {'total_cards': vals['integer'],}
+    c_req = {'data': (val, valkwargs),}
+    c_opt = {'next_page': (isurl, vals['url_api']),
+             'warnings': (isvalidlist, vals['text']),}
+    return isvaliddict(d, name, s_req=s_req, s_opt=s_opt, 
+                       c_req=c_req, c_opt=c_opt)
+
+
 def iscardlist(L, name='cards list'):
     """Validator for a list of set objects."""
     isvalidcomplexlist(L, name, validator=iscard)
+    return True
+
+
+def issetlist(L, name='sets list'):
+    """Validator for a list of set objects."""
+    isvalidcomplexlist(L, name, validator=isset)
     return True
 
 

@@ -16,7 +16,7 @@ from unicodedata import normalize
 import requests
 
 from scrycli import config
-from scrycli.validator import iscardlist, issetlist, isdataresp
+from scrycli.validator import iscardlist, isdataresp, issetlist, isscrylist
 from scrycli.normalizer import canonicalize, normalize_ctype, normalize_json
 
 # Global configuration settings.
@@ -33,11 +33,24 @@ vals = {
         'form': 'NFC',
         'mt_val': isdataresp,
         'val': iscardlist,
-    }
+    },
+    'cards_search': {
+        'keyfilter': None,
+        'form': 'NFC',
+        'mt_val': isdataresp,
+        'val': isscrylist,
+        'valkwargs': {
+            'val': iscardlist,
+            'valkwargs': {},
+        }
+    },
 }
 
+
 def trust_boundary(fn):
-    """Performs validation at a trust boundary."""
+    """Performs validation at a trust boundary. This should be used 
+    on all functions that make external calls. For scrycli, that 
+    is anything that uses a function from the requests module."""
     @wraps(fn)
     def wrapper(*args, **kwargs):
         result = fn(*args, **kwargs)
@@ -50,7 +63,7 @@ def trust_boundary(fn):
 
 
 def validate(ctype: str, content: bytes, name='response', keyfilter=None, 
-             form=None, mt_val=None, val=None):
+             form=None, mt_val=None, val=None, valkwargs={}):
     """Validate a response from Scryfall.com.
     
     :param ctype: The Content-Type header returned by Scryfall.com.
@@ -78,7 +91,7 @@ def validate(ctype: str, content: bytes, name='response', keyfilter=None,
                                  encoding=normal_ctype['charset'], 
                                  form=form)
     normal_content = normalize_json(canon_content, name, keyfilter=keyfilter)
-    val(normal_content, name)
+    val(normal_content, name, **valkwargs)
     return normal_content
 
 
@@ -125,6 +138,7 @@ def cards(page: int = None):
     return resp.headers['Content-Type'], resp.content
 
 
+@trust_boundary
 def cards_search(q, unique=None, order=None, dir=None, include_extras=None, 
                  include_multilingual=None, page=None, format=None, 
                  pretty=None):
@@ -148,6 +162,13 @@ def cards_search(q, unique=None, order=None, dir=None, include_extras=None,
     :return: The content type and response data as a :class:tuple.
     :rtype: tuple
     
+    Paging
+    ------
+    This interface only returns 175 cards at a time, so it will need 
+    to make multiple requests to get back all of the data. That will 
+    need to be implemented in the client. This call will only return 
+    one page at a time. 
+    
     Warning
     -------
     While the return type of the sets() function is a string 
@@ -155,10 +176,24 @@ def cards_search(q, unique=None, order=None, dir=None, include_extras=None,
     list of dictionaries due to the trust_boundary() decorator 
     manipulating the data returned.
     """
-    pass
-
-
-if __name__ == '__main__':
-    from pprint import pprint
-    #pprint(sets())
-    pprint(cards())
+    url = FQDN + '/cards/search'
+    params = {}
+    params['q'] = q
+    if unique:
+        params['unique'] = unique
+    if order:
+        params['order'] = order
+    if dir:
+        params['dir'] = dir
+    if include_extras:
+        params['include_extras'] = include_extras
+    if include_multilingual:
+        params['include_multilingual'] = include_multilingual
+    if page:
+        params['page'] = page
+    if format:
+        params['format'] = format
+    if pretty:
+        params['pretty'] = pretty
+    resp = requests.get(url, params)
+    return resp.headers['Content-Type'], resp.content
