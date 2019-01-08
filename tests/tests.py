@@ -227,7 +227,17 @@ class ScrycliTestCase(unittest.TestCase):
         resp = scryfake.resp['cards']
         expected = loads(resp)['data']
         self.assertEqual(scrycli.cards(), expected)
+
     
+    # Tests for cards_search().
+    def test_cards_search(self):
+        """Unit tests for cardsearch()."""
+        q = 's:ktk'
+        resp = scryfake.resp['cards_search']
+        expected = loads(resp, strict=False)
+        self.assertEqual(scrycli.cards_search(q), expected)
+
+
     @classmethod
     def tearDownClass(cls):
         """Tear down test instances and data."""
@@ -944,6 +954,15 @@ class ValidatorTestCase(unittest.TestCase):
             }
         ]
         self.assertTrue(validator.iscardlist(d))
+    
+    
+    def test_isscrylist(self):
+        """Unit test for validator.isscrylist()."""
+        d = loads(scryfake.resp['cards_search'], strict=False)
+        name = 'cards_search list'
+        val = validator.iscardlist
+        valkwargs = {}
+        self.assertTrue(validator.isscrylist(d, name, val, valkwargs))
     
     
     # Tests for validator.isdataresp().

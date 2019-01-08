@@ -503,6 +503,420 @@ resp = {
             }
         ]
     }'''.encode('utf_8'),
+    'cards_search': r'''{
+      "object": "list",
+      "total_cards": 254,
+      "has_more": true,
+      "next_page": "https://api.scryfall.com/cards/search?format=json&include_extras=false&include_multilingual=false&order=name&page=2&q=set%3Aktk&unique=cards",
+      "data": [
+        {
+          "object": "card",
+          "id": "7df9759e-1072-4a6a-be57-f73b15bf3847",
+          "oracle_id": "3d98af5f-7a0b-4a5a-b3e4-f3c9d150c993",
+          "multiverse_ids": [
+            386463
+          ],
+          "mtgo_id": 54416,
+          "mtgo_foil_id": 54417,
+          "tcgplayer_id": 93184,
+          "name": "Abomination of Gudul",
+          "lang": "en",
+          "released_at": "2014-09-26",
+          "uri": "https://api.scryfall.com/cards/7df9759e-1072-4a6a-be57-f73b15bf3847",
+          "scryfall_uri": "https://scryfall.com/card/ktk/159/abomination-of-gudul?utm_source=api",
+          "layout": "normal",
+          "highres_image": true,
+          "image_uris": {
+            "small": "https://img.scryfall.com/cards/small/en/ktk/159.jpg?1517813031",
+            "normal": "https://img.scryfall.com/cards/normal/en/ktk/159.jpg?1517813031",
+            "large": "https://img.scryfall.com/cards/large/en/ktk/159.jpg?1517813031",
+            "png": "https://img.scryfall.com/cards/png/en/ktk/159.png?1517813031",
+            "art_crop": "https://img.scryfall.com/cards/art_crop/en/ktk/159.jpg?1517813031",
+            "border_crop": "https://img.scryfall.com/cards/border_crop/en/ktk/159.jpg?1517813031"
+          },
+          "mana_cost": "{3}{B}{G}{U}",
+          "cmc": 6.0,
+          "type_line": "Creature — Horror",
+          "oracle_text": "Flying\nWhenever Abomination of Gudul deals combat damage to a player, you may draw a card. If you do, discard a card.\nMorph {2}{B}{G}{U} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)",
+          "power": "3",
+          "toughness": "4",
+          "colors": [
+            "B",
+            "G",
+            "U"
+          ],
+          "color_identity": [
+            "B",
+            "G",
+            "U"
+          ],
+          "legalities": {
+            "standard": "not_legal",
+            "future": "not_legal",
+            "frontier": "legal",
+            "modern": "legal",
+            "legacy": "legal",
+            "pauper": "legal",
+            "vintage": "legal",
+            "penny": "legal",
+            "commander": "legal",
+            "1v1": "legal",
+            "duel": "legal",
+            "brawl": "not_legal"
+          },
+          "games": [
+            "mtgo",
+            "paper"
+          ],
+          "reserved": false,
+          "foil": true,
+          "nonfoil": true,
+          "oversized": false,
+          "promo": false,
+          "reprint": false,
+          "set": "ktk",
+          "set_name": "Khans of Tarkir",
+          "set_uri": "https://api.scryfall.com/sets/6c7a715c-ded9-449e-89b0-c665773e9c3c",
+          "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Aktk&unique=prints",
+          "scryfall_set_uri": "https://scryfall.com/sets/ktk?utm_source=api",
+          "rulings_uri": "https://api.scryfall.com/cards/7df9759e-1072-4a6a-be57-f73b15bf3847/rulings",
+          "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A3d98af5f-7a0b-4a5a-b3e4-f3c9d150c993&unique=prints",
+          "collector_number": "159",
+          "digital": false,
+          "rarity": "common",
+          "watermark": "sultai",
+          "illustration_id": "ef59d0ae-0b5d-422b-ad71-8fd66ddadd47",
+          "artist": "Erica Yang",
+          "border_color": "black",
+          "frame": "2015",
+          "frame_effect": "",
+          "full_art": false,
+          "story_spotlight": false,
+          "edhrec_rank": 13859,
+          "usd": "0.03",
+          "eur": "0.02",
+          "tix": "0.01",
+          "related_uris": {
+            "gatherer": "http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=386463",
+            "tcgplayer_decks": "https://decks.tcgplayer.com/magic/deck/search?contains=Abomination+of+Gudul&page=1&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
+            "edhrec": "http://edhrec.com/route/?cc=Abomination+of+Gudul",
+            "mtgtop8": "http://mtgtop8.com/search?MD_check=1&SB_check=1&cards=Abomination+of+Gudul"
+          },
+          "purchase_uris": {
+            "tcgplayer": "https://shop.tcgplayer.com/magic/khans-of-tarkir/abomination-of-gudul?partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
+            "cardmarket": "https://www.cardmarket.com/en/Magic/Products/Singles/Khans-of-Tarkir/Abomination-of-Gudul?referrer=scryfall",
+            "cardhoarder": "https://www.cardhoarder.com/cards/54416?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
+          }
+        },
+        {
+          "object": "card",
+          "id": "9af53a53-d30a-4289-a043-953cd81ee241",
+          "oracle_id": "3b7d4206-0d88-407b-ace5-d5d28881bf95",
+          "multiverse_ids": [
+            386464
+          ],
+          "mtgo_id": 54426,
+          "mtgo_foil_id": 54427,
+          "tcgplayer_id": 92839,
+          "name": "Abzan Ascendancy",
+          "lang": "en",
+          "released_at": "2014-09-26",
+          "uri": "https://api.scryfall.com/cards/9af53a53-d30a-4289-a043-953cd81ee241",
+          "scryfall_uri": "https://scryfall.com/card/ktk/160/abzan-ascendancy?utm_source=api",
+          "layout": "normal",
+          "highres_image": true,
+          "image_uris": {
+            "small": "https://img.scryfall.com/cards/small/en/ktk/160.jpg?1517813031",
+            "normal": "https://img.scryfall.com/cards/normal/en/ktk/160.jpg?1517813031",
+            "large": "https://img.scryfall.com/cards/large/en/ktk/160.jpg?1517813031",
+            "png": "https://img.scryfall.com/cards/png/en/ktk/160.png?1517813031",
+            "art_crop": "https://img.scryfall.com/cards/art_crop/en/ktk/160.jpg?1517813031",
+            "border_crop": "https://img.scryfall.com/cards/border_crop/en/ktk/160.jpg?1517813031"
+          },
+          "mana_cost": "{W}{B}{G}",
+          "cmc": 3.0,
+          "type_line": "Enchantment",
+          "oracle_text": "When Abzan Ascendancy enters the battlefield, put a +1/+1 counter on each creature you control.\nWhenever a nontoken creature you control dies, create a 1/1 white Spirit creature token with flying.",
+          "colors": [
+            "B",
+            "G",
+            "W"
+          ],
+          "color_identity": [
+            "B",
+            "G",
+            "W"
+          ],
+          "all_parts": [
+            {
+              "object": "related_card",
+              "id": "9af53a53-d30a-4289-a043-953cd81ee241",
+              "component": "combo_piece",
+              "name": "Abzan Ascendancy",
+              "type_line": "Enchantment",
+              "uri": "https://api.scryfall.com/cards/9af53a53-d30a-4289-a043-953cd81ee241"
+            },
+            {
+              "object": "related_card",
+              "id": "7071930c-689a-44b9-b52d-45027fd14446",
+              "component": "token",
+              "name": "Spirit",
+              "type_line": "Token Creature — Spirit",
+              "uri": "https://api.scryfall.com/cards/7071930c-689a-44b9-b52d-45027fd14446"
+            }
+          ],
+          "legalities": {
+            "standard": "not_legal",
+            "future": "not_legal",
+            "frontier": "legal",
+            "modern": "legal",
+            "legacy": "legal",
+            "pauper": "not_legal",
+            "vintage": "legal",
+            "penny": "legal",
+            "commander": "legal",
+            "1v1": "legal",
+            "duel": "legal",
+            "brawl": "not_legal"
+          },
+          "games": [
+            "mtgo",
+            "paper"
+          ],
+          "reserved": false,
+          "foil": true,
+          "nonfoil": true,
+          "oversized": false,
+          "promo": false,
+          "reprint": false,
+          "set": "ktk",
+          "set_name": "Khans of Tarkir",
+          "set_uri": "https://api.scryfall.com/sets/6c7a715c-ded9-449e-89b0-c665773e9c3c",
+          "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Aktk&unique=prints",
+          "scryfall_set_uri": "https://scryfall.com/sets/ktk?utm_source=api",
+          "rulings_uri": "https://api.scryfall.com/cards/9af53a53-d30a-4289-a043-953cd81ee241/rulings",
+          "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A3b7d4206-0d88-407b-ace5-d5d28881bf95&unique=prints",
+          "collector_number": "160",
+          "digital": false,
+          "rarity": "rare",
+          "watermark": "abzan",
+          "illustration_id": "f0e9fd90-a137-4d57-b0c9-3cb3e51e1a18",
+          "artist": "Mark Winters",
+          "border_color": "black",
+          "frame": "2015",
+          "frame_effect": "",
+          "full_art": false,
+          "story_spotlight": false,
+          "edhrec_rank": 3002,
+          "usd": "0.24",
+          "eur": "0.16",
+          "tix": "0.01",
+          "related_uris": {
+            "gatherer": "http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=386464",
+            "tcgplayer_decks": "https://decks.tcgplayer.com/magic/deck/search?contains=Abzan+Ascendancy&page=1&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
+            "edhrec": "http://edhrec.com/route/?cc=Abzan+Ascendancy",
+            "mtgtop8": "http://mtgtop8.com/search?MD_check=1&SB_check=1&cards=Abzan+Ascendancy"
+          },
+          "purchase_uris": {
+            "tcgplayer": "https://shop.tcgplayer.com/magic/khans-of-tarkir/abzan-ascendancy?partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
+            "cardmarket": "https://www.cardmarket.com/en/Magic/Products/Singles/Khans-of-Tarkir/Abzan-Ascendancy?referrer=scryfall",
+            "cardhoarder": "https://www.cardhoarder.com/cards/54426?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
+          }
+        },
+        {
+          "object": "card",
+          "id": "7855528a-ede9-49a9-8749-795a004fd927",
+          "oracle_id": "46535f8e-1bcd-4588-ac6c-a4bc89c379c8",
+          "multiverse_ids": [
+            386465
+          ],
+          "mtgo_id": 54060,
+          "mtgo_foil_id": 54061,
+          "tcgplayer_id": 93017,
+          "name": "Abzan Banner",
+          "lang": "en",
+          "released_at": "2014-09-26",
+          "uri": "https://api.scryfall.com/cards/7855528a-ede9-49a9-8749-795a004fd927",
+          "scryfall_uri": "https://scryfall.com/card/ktk/215/abzan-banner?utm_source=api",
+          "layout": "normal",
+          "highres_image": true,
+          "image_uris": {
+            "small": "https://img.scryfall.com/cards/small/en/ktk/215.jpg?1517813031",
+            "normal": "https://img.scryfall.com/cards/normal/en/ktk/215.jpg?1517813031",
+            "large": "https://img.scryfall.com/cards/large/en/ktk/215.jpg?1517813031",
+            "png": "https://img.scryfall.com/cards/png/en/ktk/215.png?1517813031",
+            "art_crop": "https://img.scryfall.com/cards/art_crop/en/ktk/215.jpg?1517813031",
+            "border_crop": "https://img.scryfall.com/cards/border_crop/en/ktk/215.jpg?1517813031"
+          },
+          "mana_cost": "{3}",
+          "cmc": 3.0,
+          "type_line": "Artifact",
+          "oracle_text": "{T}: Add {W}, {B}, or {G}.\n{W}{B}{G}, {T}, Sacrifice Abzan Banner: Draw a card.",
+          "colors": [
+
+          ],
+          "color_identity": [
+            "B",
+            "G",
+            "W"
+          ],
+          "legalities": {
+            "standard": "not_legal",
+            "future": "not_legal",
+            "frontier": "legal",
+            "modern": "legal",
+            "legacy": "legal",
+            "pauper": "legal",
+            "vintage": "legal",
+            "penny": "legal",
+            "commander": "legal",
+            "1v1": "legal",
+            "duel": "legal",
+            "brawl": "not_legal"
+          },
+          "games": [
+            "mtgo",
+            "paper"
+          ],
+          "reserved": false,
+          "foil": true,
+          "nonfoil": true,
+          "oversized": false,
+          "promo": false,
+          "reprint": false,
+          "set": "ktk",
+          "set_name": "Khans of Tarkir",
+          "set_uri": "https://api.scryfall.com/sets/6c7a715c-ded9-449e-89b0-c665773e9c3c",
+          "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Aktk&unique=prints",
+          "scryfall_set_uri": "https://scryfall.com/sets/ktk?utm_source=api",
+          "rulings_uri": "https://api.scryfall.com/cards/7855528a-ede9-49a9-8749-795a004fd927/rulings",
+          "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A46535f8e-1bcd-4588-ac6c-a4bc89c379c8&unique=prints",
+          "collector_number": "215",
+          "digital": false,
+          "rarity": "common",
+          "watermark": "abzan",
+          "flavor_text": "Stone to endure, roots to remember.",
+          "illustration_id": "659ad214-1586-4f7d-b17c-545980c75b2b",
+          "artist": "Daniel Ljunggren",
+          "border_color": "black",
+          "frame": "2015",
+          "frame_effect": "",
+          "full_art": false,
+          "story_spotlight": false,
+          "edhrec_rank": 4299,
+          "usd": "0.07",
+          "eur": "0.10",
+          "tix": "0.01",
+          "related_uris": {
+            "gatherer": "http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=386465",
+            "tcgplayer_decks": "https://decks.tcgplayer.com/magic/deck/search?contains=Abzan+Banner&page=1&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
+            "edhrec": "http://edhrec.com/route/?cc=Abzan+Banner",
+            "mtgtop8": "http://mtgtop8.com/search?MD_check=1&SB_check=1&cards=Abzan+Banner"
+          },
+          "purchase_uris": {
+            "tcgplayer": "https://shop.tcgplayer.com/magic/khans-of-tarkir/abzan-banner?partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
+            "cardmarket": "https://www.cardmarket.com/en/Magic/Products/Singles/Khans-of-Tarkir/Abzan-Banner?referrer=scryfall",
+            "cardhoarder": "https://www.cardhoarder.com/cards/54060?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
+          }
+        },
+        {
+          "object": "card",
+          "id": "8f5427b1-f1c2-4bb3-8736-701667ac2256",
+          "oracle_id": "1b44fe0a-4a99-4166-b0b3-102b36b54ffa",
+          "multiverse_ids": [
+            386466
+          ],
+          "mtgo_id": 54276,
+          "mtgo_foil_id": 54277,
+          "tcgplayer_id": 93038,
+          "name": "Abzan Battle Priest",
+          "lang": "en",
+          "released_at": "2014-09-26",
+          "uri": "https://api.scryfall.com/cards/8f5427b1-f1c2-4bb3-8736-701667ac2256",
+          "scryfall_uri": "https://scryfall.com/card/ktk/1/abzan-battle-priest?utm_source=api",
+          "layout": "normal",
+          "highres_image": true,
+          "image_uris": {
+            "small": "https://img.scryfall.com/cards/small/en/ktk/1.jpg?1517813031",
+            "normal": "https://img.scryfall.com/cards/normal/en/ktk/1.jpg?1517813031",
+            "large": "https://img.scryfall.com/cards/large/en/ktk/1.jpg?1517813031",
+            "png": "https://img.scryfall.com/cards/png/en/ktk/1.png?1517813031",
+            "art_crop": "https://img.scryfall.com/cards/art_crop/en/ktk/1.jpg?1517813031",
+            "border_crop": "https://img.scryfall.com/cards/border_crop/en/ktk/1.jpg?1517813031"
+          },
+          "mana_cost": "{3}{W}",
+          "cmc": 4.0,
+          "type_line": "Creature — Human Cleric",
+          "oracle_text": "Outlast {W} ({W}, {T}: Put a +1/+1 counter on this creature. Outlast only as a sorcery.)\nEach creature you control with a +1/+1 counter on it has lifelink.",
+          "power": "3",
+          "toughness": "2",
+          "colors": [
+            "W"
+          ],
+          "color_identity": [
+            "W"
+          ],
+          "legalities": {
+            "standard": "not_legal",
+            "future": "not_legal",
+            "frontier": "legal",
+            "modern": "legal",
+            "legacy": "legal",
+            "pauper": "not_legal",
+            "vintage": "legal",
+            "penny": "legal",
+            "commander": "legal",
+            "1v1": "legal",
+            "duel": "legal",
+            "brawl": "not_legal"
+          },
+          "games": [
+            "mtgo",
+            "paper"
+          ],
+          "reserved": false,
+          "foil": true,
+          "nonfoil": true,
+          "oversized": false,
+          "promo": false,
+          "reprint": false,
+          "set": "ktk",
+          "set_name": "Khans of Tarkir",
+          "set_uri": "https://api.scryfall.com/sets/6c7a715c-ded9-449e-89b0-c665773e9c3c",
+          "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Aktk&unique=prints",
+          "scryfall_set_uri": "https://scryfall.com/sets/ktk?utm_source=api",
+          "rulings_uri": "https://api.scryfall.com/cards/8f5427b1-f1c2-4bb3-8736-701667ac2256/rulings",
+          "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A1b44fe0a-4a99-4166-b0b3-102b36b54ffa&unique=prints",
+          "collector_number": "1",
+          "digital": false,
+          "rarity": "uncommon",
+          "watermark": "abzan",
+          "flavor_text": "\"Wherever I walk, the ancestors walk too.\"",
+          "illustration_id": "81e1eac8-32f6-4be3-b5c2-95f1cb95eb59",
+          "artist": "Chris Rahn",
+          "border_color": "black",
+          "frame": "2015",
+          "frame_effect": "",
+          "full_art": false,
+          "story_spotlight": false,
+          "edhrec_rank": 2612,
+          "usd": "0.10",
+          "eur": "0.09",
+          "tix": "0.01",
+          "related_uris": {
+            "gatherer": "http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=386466",
+            "tcgplayer_decks": "https://decks.tcgplayer.com/magic/deck/search?contains=Abzan+Battle+Priest&page=1&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
+            "edhrec": "http://edhrec.com/route/?cc=Abzan+Battle+Priest",
+            "mtgtop8": "http://mtgtop8.com/search?MD_check=1&SB_check=1&cards=Abzan+Battle+Priest"
+          },
+          "purchase_uris": {
+            "tcgplayer": "https://shop.tcgplayer.com/magic/khans-of-tarkir/abzan-battle-priest?partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
+            "cardmarket": "https://www.cardmarket.com/en/Magic/Products/Singles/Khans-of-Tarkir/Abzan-Battle-Priest?referrer=scryfall",
+            "cardhoarder": "https://www.cardhoarder.com/cards/54276?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
+          }
+        }
+      ]
+    }'''.encode('utf_8'),
 }
 
 
@@ -526,6 +940,13 @@ def cards():
     """Return a dummy cards list."""
     head = {'Content-Type': 'application/json; charset=utf-8',}
     return (resp['cards'], head)
+
+
+@app.route('/cards/search', methods=['GET',])
+def cards_search():
+    """Return a dummy cards list."""
+    head = {'Content-Type': 'application/json; charset=utf-8',}
+    return (resp['cards_search'], head)
 
 
 @app.route('/shutdown', methods=['GET',])
