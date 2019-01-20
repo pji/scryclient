@@ -153,10 +153,11 @@ How do I handle redirecting scrycli during testing?
     * config
     
 Are there any trust boundaries?
-    NOTE: While I think the discussion is good. The tables are 
-    a little misleading in terms of the current implementation. 
-    The trust boundaries are currently implemented in scrycli 
-    rather than in validator.
+    NOTE: With connector still unimplemented, the closest thing in 
+    the current design is cli. The cli module does not implement 
+    a trust boundary on input going into scrycli. That means these 
+    tables are a little off from the current design, but the tables 
+    are still the goal.
     
     Yes. I'm pulling data in from Scryfall.com. That data will need 
     to be validated before anything is done with it. Where should 
@@ -222,9 +223,6 @@ Are there any trust boundaries?
     * validator
 
 How should validator be implemented?
-    NOTE: Current implementation has the trust_boundary decorator 
-    inside scrycli rather than inside validator.
-    
     It feels like this should be doable as a decorator. Perhaps it's 
     a trust_boundary() decorator that acts on the returning data? 
     I've never done it, but it should be possible.
@@ -269,4 +267,16 @@ How should validator be implemented?
     
     I'll probably hold off on solving how to register validation 
     functions for now and just link validator to scrycli.
+
+How should this be reviewed?
+    In order to assure these trust boundaries are not violated, 
+    the following should be reviewed before each commit:
     
+    *   No module other than scrycli imports requests or another 
+        HTTP client module.
+    *   Modules only call the public functions in scrycli.
+    *   All public functions in scrycli are decorated with the 
+        trust boundary decorator (currently: PV.trust_boundary).
+    
+    This is currently manual because my commits are manual. I'll 
+    work on getting this automated in the future.
