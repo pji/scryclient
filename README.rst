@@ -19,9 +19,16 @@ Installing
 Still to come....
 
 
-A Simple Example
+Simple Examples
 ----------------
-Still to come...
+Command line example::
+
+    python3 -m scrycli.cli -h
+
+Python example::
+
+    import scrycli.scrycli as SC
+    setlist = SC.sets()
 
 
 Contributing
