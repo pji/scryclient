@@ -9,6 +9,7 @@ Run from module root with:
 python3 -m unittest tests/tests.py
 """
 
+from collections.abc import Mapping, Sequence
 from json import loads
 from threading import Thread
 from time import sleep
@@ -17,76 +18,19 @@ import unittest
 from requests import get
 
 from tests import scryfake
-from scrycli import normalizer, scrycli, utility, validator
+from scrycli import scrycli, utility
+from scrycli.pyvalidate import pyvalidate as PV
+from scrycli.pyvalidate import normalize as N
+
 
 # Global configuration settings.
 FQDN = None
 SCRYFAKE_FQDN = 'http://127.0.0.1:5000'
 
+
 # Common exception messages.
 badtype = '{} value must be of type {}.'
 badvalue = '{} has invalid value.'
-
-
-class NormalizerTestCase(unittest.TestCase):
-    """Unit tests for scrycli.normalizer.py."""
-    def test_canonicalize_HappyStr(self):
-        """Happy path str test for canonicalize()."""
-        text = 'application/json; charset=utf-8'
-        name = 'Content-Type'
-        vtype = str
-        expected = 'application/json; charset=utf-8'
-        self.assertTrue(normalizer.canonicalize(text, name, vtype) 
-                        == expected)
-    
-    def test_canonicalize_HappyBytes(self):
-        """Happy path bytes test for canonicalize()."""
-        text = b'Montr\xc3\xa9al'
-        name = 'city'
-        vtype = bytes
-        expected = 'Montréal'
-        self.assertTrue(normalizer.canonicalize(text, name, vtype) 
-                        == expected)
-    
-    def test_canonicalize_BadVtype(self): 
-        text = 'application/json; charset=utf-8'
-        name = 'Content-Type'
-        vtype = list
-        ex = TypeError
-        pattern = '{} must be.*Was {}[.]'.format(name, vtype)
-        self.assertRaisesRegex(ex, pattern, normalizer.canonicalize, 
-                               text, name, vtype)
-
-    def test_canonicalize_TypeMismatch(self): 
-        text = b'application/json; charset=utf-8'
-        name = 'Content-Type'
-        vtype = str
-        ex = TypeError
-        pattern = '{} must be.*Was {}[.]'.format(name, bytes)
-        self.assertRaisesRegex(ex, pattern, normalizer.canonicalize, 
-                               text, name, vtype)
-
-    def test_canonicalize_BadCharacter(self): 
-        text = b'Montr\xe9al'
-        name = 'city'
-        vtype = bytes
-        encoding = 'utf_8'
-        ex = ValueError
-        pattern = '{} was not valid {}[.]'.format(name, encoding)
-        self.assertRaisesRegex(ex, pattern, normalizer.canonicalize, 
-                               text, name, vtype, encoding=encoding)
-
-    def test_canonicalize_BadForm(self): 
-        text = b'Montr\xc3\xa9al'
-        name = 'city'
-        vtype = bytes
-        encoding = 'utf_8'
-        form = 'XXX'
-        ex = ValueError
-        pattern = 'invalid normalization form'
-        self.assertRaisesRegex(ex, pattern, normalizer.canonicalize, 
-                               text, name, vtype, encoding=encoding, 
-                               form=form)
 
 
 class ScrycliTestCase(unittest.TestCase):
@@ -112,120 +56,25 @@ class ScrycliTestCase(unittest.TestCase):
         """Unit test for the scrycli.sets."""
         #expected = ('application/json; charset=utf-8', scryfake.resp['sets'])
         resp = scryfake.resp['sets']
-        expected = loads(resp)['data']
+        expected = loads(resp)
         self.assertEqual(scrycli.sets(), expected)
     
     
-    # Tests for validate().
-    def test_validate(self):
-        """Happy test for scrycli.validate()."""
-        args = (
-            'application/json; charset=utf-8',
-            scryfake.resp['sets'],
-        )
-        kwargs = {
-            'name': 'sets',
-            'keyfilter': 'data',
-            'form': 'NFC',
-            'mt_val': validator.isdataresp,
-            'val': validator.issetlist,
-        }
-        expected = loads(args[1])['data']
-        self.assertTrue(scrycli.validate(*args, **kwargs) == expected)
-    
-    def test_validate_ContentIsList(self):
-        """Test if content is wrong type."""
-        args = (
-            'application/json; charset=utf-8',
-            [1, 2],
-        )
-        kwargs = {
-            'name': 'sets',
-            'keyfilter': 'data',
-            'form': 'NFC',
-            'mt_val': validator.isdataresp,
-            'val': validator.issetlist,
-        }
-        regex = '{} must be type {}[.] Was {}[.]'.format(kwargs['name'], 
-                                                         bytes, list)
-        self.assertRaisesRegex(TypeError, regex, scrycli.validate,
-                               *args, **kwargs)
-    
-    def test_validate_ContentBadChar(self):
-        """Test if content has non-utf-8 code point."""
-        args = (
-            'application/json; charset=utf-8',
-            b'Montr\xe9al',
-        )
-        kwargs = {
-            'name': 'sets',
-            'keyfilter': 'data',
-            'form': 'NFC',
-            'mt_val': validator.isdataresp,
-            'val': validator.issetlist,
-        }
-        regex = '{} was not valid {}.'.format(kwargs['name'], 'utf-8')
-        self.assertRaisesRegex(ValueError, regex, scrycli.validate,
-                               *args, **kwargs)
-    
-    def test_validate_ContentNotJSON(self):
-        """Test if content is not JSON."""
-        args = (
-            'application/json; charset=utf-8',
-            b'{foo]',
-        )
-        kwargs = {
-            'name': 'sets',
-            'keyfilter': 'data',
-            'form': 'NFC',
-            'mt_val': validator.isdataresp,
-            'val': validator.issetlist,
-        }
-        regex = '{} must be valid JSON.'.format(kwargs['name'])
-        self.assertRaisesRegex(ValueError, regex, scrycli.validate,
-                               *args, **kwargs)
-    
-    def test_validate_ContentNoDataKey(self):
-        """Test if content doesn't have keyfilter."""
-        args = (
-            'application/json; charset=utf-8',
-            b'{"object": "list", "has_more": false}',
-        )
-        kwargs = {
-            'name': 'sets',
-            'keyfilter': 'data',
-            'form': 'NFC',
-            'mt_val': validator.isdataresp,
-            'val': validator.issetlist,
-        }
-        regex = '{} must have a key named {}.'.format(kwargs['name'], 
-                                                      kwargs['keyfilter'])
-        self.assertRaisesRegex(ValueError, regex, scrycli.validate,
-                               *args, **kwargs)
-    
-    def test_validate_ContentBadType(self):
-        """Test if content doesn't have keyfilter."""
-        args = (
-            'application/json; charset=utf-8',
-            b'{"object": "list", "has_more": false, "data": "hi"}',
-        )
-        kwargs = {
-            'name': 'sets',
-            'keyfilter': 'data',
-            'form': 'NFC',
-            'mt_val': validator.isdataresp,
-            'val': validator.issetlist,
-        }
-        regex = '{} value must be of type {}.'.format(kwargs['name'], list)
-        self.assertRaisesRegex(TypeError, regex, scrycli.validate,
-                               *args, **kwargs)
+    # Tests for sets_code().
+    def test_set_code_Happy(self):
+        """scrycli.sets_code() positive case."""
+        code = 'mmq'
+        pretty = True
+        resp = scryfake.resp['sets_code']
+        expected = loads(resp)
+        self.assertEqual(scrycli.sets_code(code, pretty), expected)
     
     
     # Tests for cards().
     def test_cards(self):
         """Unit tests for cards()."""
         resp = scryfake.resp['cards']
-        expected = loads(resp)['data']
+        expected = loads(resp)
         self.assertEqual(scrycli.cards(), expected)
 
     
@@ -238,6 +87,16 @@ class ScrycliTestCase(unittest.TestCase):
         self.assertEqual(scrycli.cards_search(q), expected)
 
 
+    # Tests for _get().
+    def test_get_404(self):
+        """scrycli._get() negative case: return code 404."""
+        code='zzz'
+        resp = scryfake.resp['sets_code']
+        err = scrycli.HTTPClientError
+        msg = '404: NOT FOUND'
+        self.assertRaisesRegex(err, msg, scrycli.sets_code, code)
+        
+    
     @classmethod
     def tearDownClass(cls):
         """Tear down test instances and data."""
@@ -252,12 +111,15 @@ class ScrycliTestCase(unittest.TestCase):
 
 class UtilityTestCase(unittest.TestCase):
     """Unit tests for utility.py."""
+    # Tests for build_query().
     def test_build_query(self):
         """Unit test for utility.build_query()."""
         kwargs = {'cardset': 'rna'}
         expected = 'set:rna '
         self.assertEqual(utility.build_query(**kwargs), expected)
     
+    
+    # Tests for parse_manacost().
     def test_parse_manacost(self):
         """Unit tests for utility.parse_manacost(s)."""
         s = '{2}{W}{U}'
@@ -265,741 +127,581 @@ class UtilityTestCase(unittest.TestCase):
         self.assertEqual(utility.parse_manacost(s), expected)
 
 
-class ValidatorTestCase(unittest.TestCase):
-    """Unit tests for validator."""
-    def test_isurl(self):
-        """Tests for isurl(s)."""
-        s = 'https://api.scryfall.com/sets'
-        vscheme = 'https'
-        vnetloc = 'api.scryfall.com'
-        vpath = '/sets'
-        self.assertTrue(validator.isurl(s, vscheme=vscheme, vnetloc=vnetloc, 
-                                        vpath=vpath))
-        
-        # Not a str.
-        s = [1, 2]
-        regex = badtype.format('url', str)
-        self.assertRaisesRegex(TypeError, regex, validator.isurl, s)
-        
-        # Not a valid scheme.
-        s = 'ftp://test.test'
-        vscheme = 'https'
-        regex = badvalue.format('url')
-        self.assertRaisesRegex(ValueError, regex, validator.isurl, 
-                               s, vscheme=vscheme)
-        
-        # Not a valid netloc
-        s = 'ftp://test.test'
-        vnetloc = 'api.scryfall.com'
-        regex = badvalue.format('url')
-        self.assertRaisesRegex(ValueError, regex, validator.isurl, 
-                               s, vnetloc=vnetloc)
-    
-        
-    def test_isvalidlist(self):
-        """Unit tests for isvalidlist(L, name)."""
-        L = [11112, 14532, 86543, 75432]
-        name = 'list'
-        v = validator.vals['integer']
-        self.assertTrue(validator.isvalidlist(L, name, **v))
-        
-        L = ['hi', 14532, 86543, 75432]
-        name = 'list'
-        v = validator.vals['integer']
-        regex = badtype.format(name, int)
-        self.assertRaisesRegex(TypeError, regex, validator.isvalidlist, 
-                               L, name, **v)        
-    
-    
-    def test_isset(self):
-        """Tests for issetobject()."""
-        d = {
-              "object": "set",
-              "id": "ee3a8eb6-0583-492b-8be5-265795d38038",
-              "code": "prw2",
-              "name": "RNA Ravnica Weekend",
-              "uri": "https://api.scryfall.com/sets/prw2",
-              "scryfall_uri": "https://scryfall.com/sets/prw2",
-              "search_uri": ("https://api.scryfall.com/cards/search?"
-                             "order=set&q=e%3Aprw2&unique=prints"),
-              "released_at": "2019-02-16",
-              "set_type": "promo",
-              "card_count": 10,
-              "parent_set_code": "rna",
-              "digital": False,
-              "foil_only": False,
-              "icon_svg_uri": "https://img.scryfall.com/sets/rna.svg?1545627600"
-            }
-        self.assertTrue(validator.isset(d))
+class PVTestCase(unittest.TestCase):
+    """Unit tests for pyvalidate.pyvalidate."""
+    # Tests for isvalid().
+    def test_isvalid_HappyInt(self):
+        """PV.isvalid() positive test: integer validation."""
+        item = 44
+        name = 'Integer'
+        vtype = (int, float)
+        min = 0
+        max = 100
+        self.assertTrue(PV.isvalid(item, name, vtype, 
+                                           min=min, max=max))
 
-    
-    def test_isimageuris(self):
-        """Tests for isimageuris()."""
-        d = {"small": ("https://img.scryfall.com/cards/small/front/f/f/"
-                       "ff782973-e33c-4edd-bbd7-5c8dc8d59554.jpg?1545071267"),
-             "normal": ("https://img.scryfall.com/cards/normal/front/f/f/"
-                        "ff782973-e33c-4edd-bbd7-5c8dc8d59554.jpg?1545071267"),
-             "large": ("https://img.scryfall.com/cards/large/front/f/f/"
-                       "ff782973-e33c-4edd-bbd7-5c8dc8d59554.jpg?1545071267"),
-             "png": ("https://img.scryfall.com/cards/png/front/f/f/"
-                     "ff782973-e33c-4edd-bbd7-5c8dc8d59554.png?1545071267"),
-             "art_crop": ("https://img.scryfall.com/cards/art_crop/front/f/f/"
-                          "ff782973-e33c-4edd-bbd7-5c8dc8d59554.jpg"
-                          "?1545071267"),
-             "border_crop": ("https://img.scryfall.com/cards/border_crop/"
-                             "front/f/f/ff782973-e33c-4edd-bbd7-5c8dc8d59554."
-                             "jpg?1545071267"),}
-        self.assertTrue(validator.isimageuris(d))
-    
-    
-    def test_ismanacostlist(self):
-        """Tests for ismanacostlist(s)."""
-        s = '{2}{W}{U}'
-        self.assertTrue(validator.ismanacostlist(s))
+    def test_isvalid_BadType(self):
+        """PV.isvalid() negative test: type validation."""
+        item = 44
+        name = 'Integer'
+        vtype = str
+        min = 0
+        max = 100
+        err = TypeError
+        msg_re = '{} must be of type {}. Was {}.'.format(name, str, int)
+        self.assertRaisesRegex(err, msg_re, PV.isvalid, item, name, 
+                               vtype, min=min, max=max)
         
-        s = ''
-        self.assertTrue(validator.ismanacostlist(s))
+    def test_isvalid_MaxInt(self):
+        """PV.isvalid() negative test: integer maximum."""
+        item = 103
+        name = 'Integer'
+        vtype = (int, float)
+        min = 0
+        max = 100
+        err = ValueError
+        msg_re = '{} cannot be more than {}.'.format(name, max)
+        self.assertRaisesRegex(err, msg_re, PV.isvalid, item, name, 
+                               vtype, min=min, max=max)
+    
+    def test_isvalid_MinInt(self):
+        """PV.isvalid() negative test: integer minimum."""
+        item = 0
+        name = 'Integer'
+        vtype = (int, float)
+        min = 10
+        max = 100
+        err = ValueError
+        msg_re = '{} must be at least {}.'.format(name, min)
+        self.assertRaisesRegex(err, msg_re, PV.isvalid, item, name, 
+                               vtype, min=min, max=max)
+    
+    def test_isvalid_Minlen(self):
+        """PV.isvalid() negative test: string min length."""
+        item = 'spam'
+        name = 'String'
+        vtype = str
+        minlen = 10
+        maxlen = 100
+        err = ValueError
+        msg_re = '{} must be longer than {}.'.format(name, minlen)
+        self.assertRaisesRegex(err, msg_re, PV.isvalid, item, name, 
+                               vtype, minlen=minlen, maxlen=maxlen)
+    
+    def test_isvalid_Maxlen(self):
+        """PV.isvalid() negative test: string max length."""
+        item = 'spam'
+        name = 'String'
+        vtype = str
+        minlen = 1
+        maxlen = 3
+        err = ValueError
+        msg_re = '{} must be shorter than {}.'.format(name, maxlen)
+        self.assertRaisesRegex(err, msg_re, PV.isvalid, item, name, 
+                               vtype, minlen=minlen, maxlen=maxlen)
+    
+    def test_isvalid_Pattern(self):
+        """PV.isvalid() negative test: string pattern."""
+        item = 'spam'
+        name = 'String'
+        vtype = str
+        pattern = '^e.*s$'
+        err = ValueError
+        msg_re = '{} must match pattern .*\.'.format(name)
+        self.assertRaisesRegex(err, msg_re, PV.isvalid, item, name, 
+                               vtype, pattern=pattern)
     
     
-    def test_iscardfaceobject(self):
-        """Tests for iscardfaceobject(d)."""
-        d = {"object": "card_face",
-             "name": "Golden Guardian",
-             "mana_cost": "{4}",
-             "type_line": "Artifact Creature — Golem",
-             "oracle_text": ("Defender\n{2}: Golden Guardian fights another "
-                             "target creature you control. When Golden "
-                             "Guardian dies this turn, return it to the "
-                             "battlefield transformed under your control."),
-             "colors": [],
-             "power": "4",
-             "toughness": "4",
-             "artist": "Svetlin Velinov",
-             "illustration_id": "6fdeefae-2e81-44dc-b337-88079c0494d9",
-             "image_uris": {
-                "small": ("https://img.scryfall.com/cards/small/en/rix/"
-                          "179a.jpg?1524752577"),
-                "normal": ("https://img.scryfall.com/cards/normal/en/rix/"
-                           "179a.jpg?1524752577"),
-                "large": ("https://img.scryfall.com/cards/large/en/rix/"
-                          "179a.jpg?1524752577"),
-                "png": ("https://img.scryfall.com/cards/png/en/rix/"
-                        "179a.png?1524752577"),
-                "art_crop": ("https://img.scryfall.com/cards/art_crop/en/"
-                             "rix/179a.jpg?1524752577"),
-                "border_crop": ("https://img.scryfall.com/cards/border_crop/"
-                                "en/rix/179a.jpg?1524752577"),
-                },
-            }
-        self.assertTrue(validator.iscardfaceobject(d))
+    # Tests for isvalidseq().
+    def test_isvalidseq_HappyTuple(self):
+        """PV.isvalidseq positive test: tuple."""
+        item = ('spam', 'eggs', 'sausage', 'baked beans', 'spam')
+        name = 'Spam Sketch'
+        val = PV.isvalid
+        valkwargs = {
+            'validtype': str,
+            'enum': [
+                'spam',
+                'eggs',
+                'sausage',
+                'baked beans',
+            ],
+        }
+        self.assertTrue(PV.isvalidseq(item, name, val, valkwargs))
     
+    def test_isvalidseq_HappyStr(self):
+        """PV.isvalidseq positive test: str."""
+        item = 'spam'
+        name = 'Spam Sketch'
+        val = PV.isvalid
+        valkwargs = {
+            'validtype': str,
+            'enum': [
+                's',
+                'p',
+                'a',
+                'm',
+            ],
+        }
+        self.assertTrue(PV.isvalidseq(item, name, val, valkwargs))
     
-    def test_isrelatedcardobject(self):
-        """Tests for issetobject()."""
-        d = {"object": "related_card",
-             "id": "0900e494-962d-48c6-8e78-66a489be4bb2",
-             "component": "meld_part",
-             "name": "Hanweir Garrison",
-             "type_line": "Creature — Human Soldier",
-             "uri": ("https://api.scryfall.com/cards/"
-                     "0900e494-962d-48c6-8e78-66a489be4bb2"),}
-        self.assertTrue(validator.isrelatedcardobject(d))
+    def test_isvalidseq_BadMember(self):
+        """PV.isvalidseq negative test: invalid member."""
+        item = ('spam', 'eggs', 'sausage', 'baked beans', 'spam')
+        name = 'Spam Sketch'
+        val = PV.isvalid
+        valkwargs = {
+            'validtype': str,
+            'enum': [
+                'spam',
+                'eggs',
+                'baked beans',
+            ],
+        }
+        args = [item, name, val, valkwargs]
+        err = ValueError
+        msg_re = 'Spam Sketch:2 does not match a value in list.'
+        self.assertRaisesRegex(err, msg_re, PV.isvalidseq, *args)
     
-    
-    def test_iscard(self):
-        """Tests for iscard()."""
-        d = {
-              "object": "card",
-              "id": "0900e494-962d-48c6-8e78-66a489be4bb2",
-              "oracle_id": "7cb29569-48e1-4782-9906-fad155ebfafe",
-              "multiverse_ids": [
-                414428
-              ],
-              "mtgo_id": 61220,
-              "tcgplayer_id": 119682,
-              "name": "Hanweir Garrison",
-              "lang": "en",
-              "released_at": "2016-07-22",
-              "uri": "https://api.scryfall.com/cards/0900e494-962d-48c6-8e78-66a489be4bb2",
-              "scryfall_uri": "https://scryfall.com/card/emn/130a/hanweir-garrison?utm_source=api",
-              "layout": "meld",
-              "highres_image": True,
-              "image_uris": {
-                "small": "https://img.scryfall.com/cards/small/en/emn/130a.jpg?1526595227",
-                "normal": "https://img.scryfall.com/cards/normal/en/emn/130a.jpg?1526595227",
-                "large": "https://img.scryfall.com/cards/large/en/emn/130a.jpg?1526595227",
-                "png": "https://img.scryfall.com/cards/png/en/emn/130a.png?1526595227",
-                "art_crop": "https://img.scryfall.com/cards/art_crop/en/emn/130a.jpg?1526595227",
-                "border_crop": "https://img.scryfall.com/cards/border_crop/en/emn/130a.jpg?1526595227"
-              },
-              "mana_cost": "{2}{R}",
-              "cmc": 3.0,
-              "type_line": "Creature — Human Soldier",
-              "oracle_text": "Whenever Hanweir Garrison attacks, create two 1/1 red Human creature tokens that are tapped and attacking.\n(Melds with Hanweir Battlements.)",
-              "power": "2",
-              "toughness": "3",
-              "colors": [
-                "R"
-              ],
-              "color_identity": [
-                "R"
-              ],
-              "all_parts": [
-                {
-                  "object": "related_card",
-                  "id": "0900e494-962d-48c6-8e78-66a489be4bb2",
-                  "component": "meld_part",
-                  "name": "Hanweir Garrison",
-                  "type_line": "Creature — Human Soldier",
-                  "uri": "https://api.scryfall.com/cards/0900e494-962d-48c6-8e78-66a489be4bb2"
-                },
-                {
-                  "object": "related_card",
-                  "id": "671fe14d-0070-4bc7-8983-707b570f4492",
-                  "component": "meld_result",
-                  "name": "Hanweir, the Writhing Township",
-                  "type_line": "Legendary Creature — Eldrazi Ooze",
-                  "uri": "https://api.scryfall.com/cards/671fe14d-0070-4bc7-8983-707b570f4492"
-                },
-                {
-                  "object": "related_card",
-                  "id": "1d743ad6-6ca2-409a-9773-581cc195dbf2",
-                  "component": "meld_part",
-                  "name": "Hanweir Battlements",
-                  "type_line": "Land",
-                  "uri": "https://api.scryfall.com/cards/1d743ad6-6ca2-409a-9773-581cc195dbf2"
-                },
-                {
-                  "object": "related_card",
-                  "id": "dbd994fc-f3f0-4c81-86bd-14ca63ec229b",
-                  "component": "token",
-                  "name": "Human",
-                  "type_line": "Token Creature — Human",
-                  "uri": "https://api.scryfall.com/cards/dbd994fc-f3f0-4c81-86bd-14ca63ec229b"
-                }
-              ],
-              "legalities": {
-                "standard": "not_legal",
-                "future": "not_legal",
-                "frontier": "legal",
-                "modern": "legal",
-                "legacy": "legal",
-                "pauper": "not_legal",
-                "vintage": "legal",
-                "penny": "not_legal",
-                "commander": "legal",
-                "1v1": "legal",
-                "duel": "legal",
-                "brawl": "not_legal"
-              },
-              "games": [
-                "mtgo",
-                "paper"
-              ],
-              "reserved": False,
-              "foil": True,
-              "nonfoil": True,
-              "oversized": False,
-              "promo": False,
-              "reprint": False,
-              "set": "emn",
-              "set_name": "Eldritch Moon",
-              "set_uri": "https://api.scryfall.com/sets/5f0e4093-334f-4439-bbb5-a0affafd0ffc",
-              "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Aemn&unique=prints",
-              "scryfall_set_uri": "https://scryfall.com/sets/emn?utm_source=api",
-              "rulings_uri": "https://api.scryfall.com/cards/0900e494-962d-48c6-8e78-66a489be4bb2/rulings",
-              "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A7cb29569-48e1-4782-9906-fad155ebfafe&unique=prints",
-              "collector_number": "130a",
-              "digital": False,
-              "rarity": "rare",
-              "flavor_text": "\"We're ready for anything!\"",
-              "illustration_id": "2b2d858a-8c54-413a-a107-cfc587540ac9",
-              "artist": "Vincent Proce",
-              "border_color": "black",
-              "frame": "2015",
-              "frame_effect": "",
-              "full_art": False,
-              "story_spotlight": False,
-              "edhrec_rank": 946,
-              "usd": "1.29",
-              "tix": "0.01",
-              "related_uris": {
-                "gatherer": "http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=414428",
-                "tcgplayer_decks": "https://decks.tcgplayer.com/magic/deck/search?contains=Hanweir+Garrison&page=1&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "edhrec": "http://edhrec.com/route/?cc=Hanweir+Garrison",
-                "mtgtop8": "http://mtgtop8.com/search?MD_check=1&SB_check=1&cards=Hanweir+Garrison"
-              },
-              "purchase_uris": {
-                "tcgplayer": "https://shop.tcgplayer.com/magic/eldritch-moon/hanweir-garrison?partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "cardmarket": "https://www.cardmarket.com/en/Magic?mainPage=showSearchResult&referrer=scryfall&searchFor=Hanweir+Garrison",
-                "cardhoarder": "https://www.cardhoarder.com/cards/61220?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
-              }
-            }
-        self.assertTrue(validator.iscard(d))
-    
-    
-    def test_iscardlist(self):
-        """Tests for iscardlist()."""
-        d = [
-            {
-              "object": "card",
-              "id": "9472cd09-0b0a-49c9-ab10-ec5b73ddb74b",
-              "oracle_id": "2aa0e0e5-cb6d-4518-8eff-d29f935486e0",
-              "multiverse_ids": [
-                456771
-              ],
-              "mtgo_id": 70423,
-              "tcgplayer_id": 180973,
-              "name": "Nourishing Shoal",
-              "lang": "en",
-              "released_at": "2018-12-07",
-              "uri": "https://api.scryfall.com/cards/9472cd09-0b0a-49c9-ab10-ec5b73ddb74b",
-              "scryfall_uri": "https://scryfall.com/card/uma/175/nourishing-shoal?utm_source=api",
-              "layout": "normal",
-              "highres_image": False,
-              "image_uris": {
-                "small": "https://img.scryfall.com/cards/small/front/9/4/9472cd09-0b0a-49c9-ab10-ec5b73ddb74b.jpg?1542806319",
-                "normal": "https://img.scryfall.com/cards/normal/front/9/4/9472cd09-0b0a-49c9-ab10-ec5b73ddb74b.jpg?1542806319",
-                "large": "https://img.scryfall.com/cards/large/front/9/4/9472cd09-0b0a-49c9-ab10-ec5b73ddb74b.jpg?1542806319",
-                "png": "https://img.scryfall.com/cards/png/front/9/4/9472cd09-0b0a-49c9-ab10-ec5b73ddb74b.png?1542806319",
-                "art_crop": "https://img.scryfall.com/cards/art_crop/front/9/4/9472cd09-0b0a-49c9-ab10-ec5b73ddb74b.jpg?1542806319",
-                "border_crop": "https://img.scryfall.com/cards/border_crop/front/9/4/9472cd09-0b0a-49c9-ab10-ec5b73ddb74b.jpg?1542806319"
-              },
-              "mana_cost": "{X}{G}{G}",
-              "cmc": 2,
-              "type_line": "Instant — Arcane",
-              "oracle_text": "You may exile a green card with converted mana cost X from your hand rather than pay this spell's mana cost.\nYou gain X life.",
-              "colors": [
-                "G"
-              ],
-              "color_identity": [
-                "G"
-              ],
-              "legalities": {
-                "standard": "not_legal",
-                "future": "not_legal",
-                "frontier": "not_legal",
-                "modern": "legal",
-                "legacy": "legal",
-                "pauper": "not_legal",
-                "vintage": "legal",
-                "penny": "not_legal",
-                "commander": "legal",
-                "1v1": "legal",
-                "duel": "legal",
-                "brawl": "not_legal"
-              },
-              "games": [
-                "mtgo",
-                "paper"
-              ],
-              "reserved": False,
-              "foil": True,
-              "nonfoil": True,
-              "oversized": False,
-              "promo": False,
-              "reprint": True,
-              "set": "uma",
-              "set_name": "Ultimate Masters",
-              "set_uri": "https://api.scryfall.com/sets/2ec77b94-6d47-4891-a480-5d0b4e5c9372",
-              "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Auma&unique=prints",
-              "scryfall_set_uri": "https://scryfall.com/sets/uma?utm_source=api",
-              "rulings_uri": "https://api.scryfall.com/cards/9472cd09-0b0a-49c9-ab10-ec5b73ddb74b/rulings",
-              "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A2aa0e0e5-cb6d-4518-8eff-d29f935486e0&unique=prints",
-              "collector_number": "175",
-              "digital": False,
-              "rarity": "rare",
-              "illustration_id": "f1677113-e1ad-440c-9ca2-c15ba83e609a",
-              "artist": "Greg Staples",
-              "border_color": "black",
-              "frame": "2015",
-              "frame_effect": "",
-              "full_art": False,
-              "timeshifted": False,
-              "colorshifted": False,
-              "futureshifted": False,
-              "story_spotlight": False,
-              "edhrec_rank": 11876,
-              "usd": "1.19",
-              "tix": "0.26",
-              "related_uris": {
-                "gatherer": "http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=456771",
-                "tcgplayer_decks": "https://decks.tcgplayer.com/magic/deck/search?contains=Nourishing+Shoal&page=1&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "edhrec": "http://edhrec.com/route/?cc=Nourishing+Shoal",
-                "mtgtop8": "http://mtgtop8.com/search?MD_check=1&SB_check=1&cards=Nourishing+Shoal"
-              },
-              "purchase_uris": {
-                "tcgplayer": "https://shop.tcgplayer.com/magic/ultimate-masters/nourishing-shoal?partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "cardmarket": "https://www.cardmarket.com/en/Magic?mainPage=showSearchResult&referrer=scryfall&searchFor=Nourishing+Shoal",
-                "cardhoarder": "https://www.cardhoarder.com/cards/70423?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
-              }
-            },
-            {
-              "object": "card",
-              "id": "ab0d006b-d783-4f63-a3e0-64df98a8b0db",
-              "oracle_id": "2aa0e0e5-cb6d-4518-8eff-d29f935486e0",
-              "multiverse_ids": [
-                457025
-              ],
-              "name": "Nourishing Shoal",
-              "printed_name": "滋養の群れ",
-              "lang": "ja",
-              "released_at": "2018-12-07",
-              "uri": "https://api.scryfall.com/cards/ab0d006b-d783-4f63-a3e0-64df98a8b0db",
-              "scryfall_uri": "https://scryfall.com/card/uma/175/ja/%E6%BB%8B%E9%A4%8A%E3%81%AE%E7%BE%A4%E3%82%8C?utm_source=api",
-              "layout": "normal",
-              "highres_image": False,
-              "image_uris": {
-                "small": "https://img.scryfall.com/cards/small/front/a/b/ab0d006b-d783-4f63-a3e0-64df98a8b0db.jpg?1544049723",
-                "normal": "https://img.scryfall.com/cards/normal/front/a/b/ab0d006b-d783-4f63-a3e0-64df98a8b0db.jpg?1544049723",
-                "large": "https://img.scryfall.com/cards/large/front/a/b/ab0d006b-d783-4f63-a3e0-64df98a8b0db.jpg?1544049723",
-                "png": "https://img.scryfall.com/cards/png/front/a/b/ab0d006b-d783-4f63-a3e0-64df98a8b0db.png?1544049723",
-                "art_crop": "https://img.scryfall.com/cards/art_crop/front/a/b/ab0d006b-d783-4f63-a3e0-64df98a8b0db.jpg?1544049723",
-                "border_crop": "https://img.scryfall.com/cards/border_crop/front/a/b/ab0d006b-d783-4f63-a3e0-64df98a8b0db.jpg?1544049723"
-              },
-              "mana_cost": "{X}{G}{G}",
-              "cmc": 2,
-              "type_line": "Instant — Arcane",
-              "printed_type_line": "インスタント — 秘儀",
-              "oracle_text": "You may exile a green card with converted mana cost X from your hand rather than pay this spell's mana cost.\nYou gain X life.",
-              "printed_text": "あなたはこの呪文のマナ・コストを支払うのではなく、あなたの手札から点数で見たマナ・コストがＸの緑のカード１枚を追放してもよい。\nあなたはＸ点のライフを得る。",
-              "colors": [
-                "G"
-              ],
-              "color_identity": [
-                "G"
-              ],
-              "legalities": {
-                "standard": "not_legal",
-                "future": "not_legal",
-                "frontier": "not_legal",
-                "modern": "legal",
-                "legacy": "legal",
-                "pauper": "not_legal",
-                "vintage": "legal",
-                "penny": "not_legal",
-                "commander": "legal",
-                "1v1": "legal",
-                "duel": "legal",
-                "brawl": "not_legal"
-              },
-              "games": [
-                "mtgo",
-                "paper"
-              ],
-              "reserved": False,
-              "foil": True,
-              "nonfoil": True,
-              "oversized": False,
-              "promo": False,
-              "reprint": True,
-              "set": "uma",
-              "set_name": "Ultimate Masters",
-              "set_uri": "https://api.scryfall.com/sets/2ec77b94-6d47-4891-a480-5d0b4e5c9372",
-              "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Auma&unique=prints",
-              "scryfall_set_uri": "https://scryfall.com/sets/uma?utm_source=api",
-              "rulings_uri": "https://api.scryfall.com/cards/ab0d006b-d783-4f63-a3e0-64df98a8b0db/rulings",
-              "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A2aa0e0e5-cb6d-4518-8eff-d29f935486e0&unique=prints",
-              "collector_number": "175",
-              "digital": False,
-              "rarity": "rare",
-              "illustration_id": "f1677113-e1ad-440c-9ca2-c15ba83e609a",
-              "artist": "Greg Staples",
-              "border_color": "black",
-              "frame": "2015",
-              "frame_effect": "",
-              "full_art": False,
-              "timeshifted": False,
-              "colorshifted": False,
-              "futureshifted": False,
-              "story_spotlight": False,
-              "edhrec_rank": 11876,
-              "related_uris": {
-                "gatherer": "http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=457025&printed=True",
-                "tcgplayer_decks": "https://decks.tcgplayer.com/magic/deck/search?contains=Nourishing+Shoal&page=1&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "edhrec": "http://edhrec.com/route/?cc=Nourishing+Shoal",
-                "mtgtop8": "http://mtgtop8.com/search?MD_check=1&SB_check=1&cards=Nourishing+Shoal"
-              },
-              "purchase_uris": {
-                "tcgplayer": "https://shop.tcgplayer.com/productcatalog/product/show?ProductName=Nourishing+Shoal&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "cardmarket": "https://www.cardmarket.com/en/Magic?mainPage=showSearchResult&referrer=scryfall&searchFor=Nourishing+Shoal",
-                "cardhoarder": "https://www.cardhoarder.com/cards?affiliate_id=scryfall&data%5Bsearch%5D=Nourishing+Shoal&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
-              }
-            },
-            {
-              "object": "card",
-              "id": "ff782973-e33c-4edd-bbd7-5c8dc8d59554",
-              "oracle_id": "98aa9424-5912-4bd6-9300-b3972a31d8af",
-              "multiverse_ids": [
-                456770
-              ],
-              "mtgo_id": 70029,
-              "mtgo_foil_id": 70030,
-              "tcgplayer_id": 179490,
-              "name": "Noble Hierarch",
-              "lang": "en",
-              "released_at": "2018-12-07",
-              "uri": "https://api.scryfall.com/cards/ff782973-e33c-4edd-bbd7-5c8dc8d59554",
-              "scryfall_uri": "https://scryfall.com/card/uma/174/noble-hierarch?utm_source=api",
-              "layout": "normal",
-              "highres_image": True,
-              "image_uris": {
-                "small": "https://img.scryfall.com/cards/small/front/f/f/ff782973-e33c-4edd-bbd7-5c8dc8d59554.jpg?1545071267",
-                "normal": "https://img.scryfall.com/cards/normal/front/f/f/ff782973-e33c-4edd-bbd7-5c8dc8d59554.jpg?1545071267",
-                "large": "https://img.scryfall.com/cards/large/front/f/f/ff782973-e33c-4edd-bbd7-5c8dc8d59554.jpg?1545071267",
-                "png": "https://img.scryfall.com/cards/png/front/f/f/ff782973-e33c-4edd-bbd7-5c8dc8d59554.png?1545071267",
-                "art_crop": "https://img.scryfall.com/cards/art_crop/front/f/f/ff782973-e33c-4edd-bbd7-5c8dc8d59554.jpg?1545071267",
-                "border_crop": "https://img.scryfall.com/cards/border_crop/front/f/f/ff782973-e33c-4edd-bbd7-5c8dc8d59554.jpg?1545071267"
-              },
-              "mana_cost": "{G}",
-              "cmc": 1,
-              "type_line": "Creature — Human Druid",
-              "oracle_text": "Exalted (Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn.)\n{T}: Add {G}, {W}, or {U}.",
-              "power": "0",
-              "toughness": "1",
-              "colors": [
-                "G"
-              ],
-              "color_identity": [
-                "G",
-                "U",
-                "W"
-              ],
-              "legalities": {
-                "standard": "not_legal",
-                "future": "not_legal",
-                "frontier": "not_legal",
-                "modern": "legal",
-                "legacy": "legal",
-                "pauper": "not_legal",
-                "vintage": "legal",
-                "penny": "not_legal",
-                "commander": "legal",
-                "1v1": "legal",
-                "duel": "legal",
-                "brawl": "not_legal"
-              },
-              "games": [
-                "mtgo",
-                "paper"
-              ],
-              "reserved": False,
-              "foil": True,
-              "nonfoil": True,
-              "oversized": False,
-              "promo": False,
-              "reprint": True,
-              "set": "uma",
-              "set_name": "Ultimate Masters",
-              "set_uri": "https://api.scryfall.com/sets/2ec77b94-6d47-4891-a480-5d0b4e5c9372",
-              "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Auma&unique=prints",
-              "scryfall_set_uri": "https://scryfall.com/sets/uma?utm_source=api",
-              "rulings_uri": "https://api.scryfall.com/cards/ff782973-e33c-4edd-bbd7-5c8dc8d59554/rulings",
-              "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A98aa9424-5912-4bd6-9300-b3972a31d8af&unique=prints",
-              "collector_number": "174",
-              "digital": False,
-              "rarity": "rare",
-              "flavor_text": "She protects the sacred groves from blight, drought, and the Unbeholden.",
-              "illustration_id": "0a2b9149-9ff1-4097-8377-f3db60ef7ba8",
-              "artist": "Mark Zug",
-              "border_color": "black",
-              "frame": "2015",
-              "frame_effect": "",
-              "full_art": False,
-              "timeshifted": False,
-              "colorshifted": False,
-              "futureshifted": False,
-              "story_spotlight": False,
-              "edhrec_rank": 2399,
-              "usd": "46.26",
-              "eur": "37.88",
-              "related_uris": {
-                "gatherer": "http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=456770",
-                "tcgplayer_decks": "https://decks.tcgplayer.com/magic/deck/search?contains=Noble+Hierarch&page=1&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "edhrec": "http://edhrec.com/route/?cc=Noble+Hierarch",
-                "mtgtop8": "http://mtgtop8.com/search?MD_check=1&SB_check=1&cards=Noble+Hierarch"
-              },
-              "purchase_uris": {
-                "tcgplayer": "https://shop.tcgplayer.com/magic/ultimate-masters/noble-hierarch?partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "cardmarket": "https://www.cardmarket.com/en/Magic/Products/Singles/Ultimate-Masters/Noble-Hierarch?referrer=scryfall",
-                "cardhoarder": "https://www.cardhoarder.com/cards/70029?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
-              }
-            },
-            {
-              "object": "card",
-              "id": "0900e494-962d-48c6-8e78-66a489be4bb2",
-              "oracle_id": "7cb29569-48e1-4782-9906-fad155ebfafe",
-              "multiverse_ids": [
-                414428
-              ],
-              "mtgo_id": 61220,
-              "tcgplayer_id": 119682,
-              "name": "Hanweir Garrison",
-              "lang": "en",
-              "released_at": "2016-07-22",
-              "uri": "https://api.scryfall.com/cards/0900e494-962d-48c6-8e78-66a489be4bb2",
-              "scryfall_uri": "https://scryfall.com/card/emn/130a/hanweir-garrison?utm_source=api",
-              "layout": "meld",
-              "highres_image": True,
-              "image_uris": {
-                "small": "https://img.scryfall.com/cards/small/en/emn/130a.jpg?1526595227",
-                "normal": "https://img.scryfall.com/cards/normal/en/emn/130a.jpg?1526595227",
-                "large": "https://img.scryfall.com/cards/large/en/emn/130a.jpg?1526595227",
-                "png": "https://img.scryfall.com/cards/png/en/emn/130a.png?1526595227",
-                "art_crop": "https://img.scryfall.com/cards/art_crop/en/emn/130a.jpg?1526595227",
-                "border_crop": "https://img.scryfall.com/cards/border_crop/en/emn/130a.jpg?1526595227"
-              },
-              "mana_cost": "{2}{R}",
-              "cmc": 3.0,
-              "type_line": "Creature — Human Soldier",
-              "oracle_text": "Whenever Hanweir Garrison attacks, create two 1/1 red Human creature tokens that are tapped and attacking.\n(Melds with Hanweir Battlements.)",
-              "power": "2",
-              "toughness": "3",
-              "colors": [
-                "R"
-              ],
-              "color_identity": [
-                "R"
-              ],
-              "all_parts": [
-                {
-                  "object": "related_card",
-                  "id": "0900e494-962d-48c6-8e78-66a489be4bb2",
-                  "component": "meld_part",
-                  "name": "Hanweir Garrison",
-                  "type_line": "Creature — Human Soldier",
-                  "uri": "https://api.scryfall.com/cards/0900e494-962d-48c6-8e78-66a489be4bb2"
-                },
-                {
-                  "object": "related_card",
-                  "id": "671fe14d-0070-4bc7-8983-707b570f4492",
-                  "component": "meld_result",
-                  "name": "Hanweir, the Writhing Township",
-                  "type_line": "Legendary Creature — Eldrazi Ooze",
-                  "uri": "https://api.scryfall.com/cards/671fe14d-0070-4bc7-8983-707b570f4492"
-                },
-                {
-                  "object": "related_card",
-                  "id": "1d743ad6-6ca2-409a-9773-581cc195dbf2",
-                  "component": "meld_part",
-                  "name": "Hanweir Battlements",
-                  "type_line": "Land",
-                  "uri": "https://api.scryfall.com/cards/1d743ad6-6ca2-409a-9773-581cc195dbf2"
-                },
-                {
-                  "object": "related_card",
-                  "id": "dbd994fc-f3f0-4c81-86bd-14ca63ec229b",
-                  "component": "token",
-                  "name": "Human",
-                  "type_line": "Token Creature — Human",
-                  "uri": "https://api.scryfall.com/cards/dbd994fc-f3f0-4c81-86bd-14ca63ec229b"
-                }
-              ],
-              "legalities": {
-                "standard": "not_legal",
-                "future": "not_legal",
-                "frontier": "legal",
-                "modern": "legal",
-                "legacy": "legal",
-                "pauper": "not_legal",
-                "vintage": "legal",
-                "penny": "not_legal",
-                "commander": "legal",
-                "1v1": "legal",
-                "duel": "legal",
-                "brawl": "not_legal"
-              },
-              "games": [
-                "mtgo",
-                "paper"
-              ],
-              "reserved": False,
-              "foil": True,
-              "nonfoil": True,
-              "oversized": False,
-              "promo": False,
-              "reprint": False,
-              "set": "emn",
-              "set_name": "Eldritch Moon",
-              "set_uri": "https://api.scryfall.com/sets/5f0e4093-334f-4439-bbb5-a0affafd0ffc",
-              "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Aemn&unique=prints",
-              "scryfall_set_uri": "https://scryfall.com/sets/emn?utm_source=api",
-              "rulings_uri": "https://api.scryfall.com/cards/0900e494-962d-48c6-8e78-66a489be4bb2/rulings",
-              "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A7cb29569-48e1-4782-9906-fad155ebfafe&unique=prints",
-              "collector_number": "130a",
-              "digital": False,
-              "rarity": "rare",
-              "flavor_text": "\"We're ready for anything!\"",
-              "illustration_id": "2b2d858a-8c54-413a-a107-cfc587540ac9",
-              "artist": "Vincent Proce",
-              "border_color": "black",
-              "frame": "2015",
-              "frame_effect": "",
-              "full_art": False,
-              "story_spotlight": False,
-              "edhrec_rank": 946,
-              "usd": "1.29",
-              "tix": "0.01",
-              "related_uris": {
-                "gatherer": "http://gatherer.wizards.com/Pages/Card/Details.aspx?multiverseid=414428",
-                "tcgplayer_decks": "https://decks.tcgplayer.com/magic/deck/search?contains=Hanweir+Garrison&page=1&partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "edhrec": "http://edhrec.com/route/?cc=Hanweir+Garrison",
-                "mtgtop8": "http://mtgtop8.com/search?MD_check=1&SB_check=1&cards=Hanweir+Garrison"
-              },
-              "purchase_uris": {
-                "tcgplayer": "https://shop.tcgplayer.com/magic/eldritch-moon/hanweir-garrison?partner=Scryfall&utm_campaign=affiliate&utm_medium=scryfall&utm_source=scryfall",
-                "cardmarket": "https://www.cardmarket.com/en/Magic?mainPage=showSearchResult&referrer=scryfall&searchFor=Hanweir+Garrison",
-                "cardhoarder": "https://www.cardhoarder.com/cards/61220?affiliate_id=scryfall&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
-              }
-            }
+    def test_isvalidseq_Nesting(self):
+        """PV.isvsalidseq positive test: list nesting."""
+        item = [
+            (['0', '5'], ['x', 'y']),
+            (['2', '4'], ['x', 'y']),
+            (['1', '1'], ['x', 'y']),
+            (['3', '3'], ['x', 'y']),
+            (['4', '1'], ['x', 'y']),
         ]
-        self.assertTrue(validator.iscardlist(d))
+        name = 'Coords'
+        val = PV.isvalidseq
+        valkwargs = {
+            'val': PV.isvalidseq,
+            'valkwargs': {
+                'val': PV.isvalid,
+                'valkwargs': {
+                    'validtype': str,
+                    'pattern': '^[xy0-5]$',
+                },
+            },
+        }
+        args = [item, name, val, valkwargs]
+        self.assertTrue(PV.isvalidseq(*args))
     
     
-    def test_isscrylist(self):
-        """Unit test for validator.isscrylist()."""
-        d = loads(scryfake.resp['cards_search'], strict=False)
-        name = 'cards_search list'
-        val = validator.iscardlist
-        valkwargs = {}
-        self.assertTrue(validator.isscrylist(d, name, val, valkwargs))
+    # Tests for isvalidmap().
+    def test_isvalidmap_Happy(self):
+        """PV.isvalidmap() positive test."""
+        d = {
+            'name': 'Terry Jones',
+            'type': 'animal',
+            'score': 98,
+        }
+        name = 'Python'
+        req = {
+            'name': {
+                'val': PV.isvalid,
+                'valkwargs': {
+                    'validtype': str,
+                },
+            },
+            'type': {
+                'val': PV.isvalid,
+                'valkwargs': {
+                    'validtype': str,
+                    'enum': [
+                        'animal',
+                        'vegetable',
+                        'mineral',
+                    ],
+                },
+            },
+        }
+        opt = {
+            'score': {
+                'val': PV.isvalid,
+                'valkwargs': {
+                    'validtype': int,
+                    'min': 0,
+                    'max': 100,
+                },
+            },
+        }
+        args = (d, name, req, opt)
+        self.assertTrue(PV.isvalidmap(*args))
+    
+    def test_isvalidmap_Nesting(self):
+        """PV.isvalidmap() positive test: nesting"""
+        d = {
+            'name': 'Michael Palin',
+            'type': 'animal',
+            'score': [98, 95, 99],
+            'pet': {
+                'name': 'Wanda',
+                'type': 'animal',
+                'subtype': 'fish',
+            },
+        }
+        name = 'Python'
+        req = {
+            'name': {
+                'val': PV.isvalid,
+                'valkwargs': {
+                    'validtype': str,
+                },
+            },
+            'type': {
+                'val': PV.isvalid,
+                'valkwargs': {
+                    'validtype': str,
+                    'enum': [
+                        'animal',
+                        'vegetable',
+                        'mineral',
+                    ],
+                },
+            },
+        }
+        opt = {
+            'score': {
+                'val': PV.isvalidseq,
+                'valkwargs': {
+                    'val': PV.isvalid,
+                    'valkwargs': {
+                        'validtype': int,
+                        'min': 0,
+                        'max': 100,
+                    },
+                },
+            },
+            'pet': {
+                'val': PV.isvalidmap,
+                'valkwargs': {
+                    'req': {
+                        'name': {
+                            'val': PV.isvalid,
+                            'valkwargs': {
+                                'validtype': str,
+                            },
+                        },
+                        'type': {
+                            'val': PV.isvalid,
+                            'valkwargs': {
+                                'validtype': str,
+                                'enum': [
+                                    'animal',
+                                    'vegetable',
+                                    'mineral',
+                                ],
+                            },
+                        },
+                        'subtype': {
+                            'val': PV.isvalid,
+                            'valkwargs': {
+                                'validtype': str,
+                                'enum': [
+                                    'dog',
+                                    'cat',
+                                    'ferret',
+                                    'skunk',
+                                    'fish',     
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        args = (d, name, req, opt)
+        self.assertTrue(PV.isvalidmap(*args))
+    
+    def test_isvalidmap_BadNest(self):
+        """PV.isvalidmap() negative test: nested bad type"""
+        d = {
+            'name': 'Michael Palin',
+            'type': 'animal',
+            'score': [98, 95, 99],
+            'pet': 'Wanda',
+        }
+        name = 'Python'
+        req = {
+            'name': {
+                'val': PV.isvalid,
+                'valkwargs': {
+                    'validtype': str,
+                },
+            },
+            'type': {
+                'val': PV.isvalid,
+                'valkwargs': {
+                    'validtype': str,
+                    'enum': [
+                        'animal',
+                        'vegetable',
+                        'mineral',
+                    ],
+                },
+            },
+        }
+        opt = {
+            'score': {
+                'val': PV.isvalidseq,
+                'valkwargs': {
+                    'val': PV.isvalid,
+                    'valkwargs': {
+                        'validtype': int,
+                        'min': 0,
+                        'max': 100,
+                    },
+                },
+            },
+            'pet': {
+                'val': PV.isvalidmap,
+                'valkwargs': {
+                    'req': {
+                        'name': {
+                            'val': PV.isvalid,
+                            'valkwargs': {
+                                'validtype': str,
+                            },
+                        },
+                        'type': {
+                            'val': PV.isvalid,
+                            'valkwargs': {
+                                'validtype': str,
+                                'enum': [
+                                    'animal',
+                                    'vegetable',
+                                    'mineral',
+                                ],
+                            },
+                        },
+                        'subtype': {
+                            'val': PV.isvalid,
+                            'valkwargs': {
+                                'validtype': str,
+                                'enum': [
+                                    'dog',
+                                    'cat',
+                                    'ferret',
+                                    'skunk',
+                                    'fish',     
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        args = (d, name, req, opt)
+        err = TypeError
+        msg_re = 'Python:pet must be of type {}. Was {}'.format(Mapping, str)
+        self.assertRaisesRegex(err, msg_re, PV.isvalidmap, *args)
     
     
-    # Tests for validator.isdataresp().
-    def test_isdataresp(self):
-        """Unit tests for validator.isdataresp()."""
-        ctype = {'mediatype': 'application/json',
-                 'charset': 'utf-8',}
-        self.assertTrue(validator.isdataresp(ctype))
+    # Tests for isvalidurl().
+    def test_isvalidurl_Happy(self):
+        """PV.isvalidurl() positive test."""
+        s = 'https://www.test.test/test.html?q=test#main'
+        name = 'URL'
+        kwargs = {
+            'vscheme': 'https',
+            'vnetloc': 'www.test.test',
+            'vpath': '/test.html',
+            'vquery': 'q=test',
+            'vfrag': 'main',
+        }
+        self.assertTrue(PV.isvalidurl(s, name, **kwargs))
+    
+    def test_isvalidurl_BadType(self):
+        """PV.isvalidurl() positive test."""
+        s = [1, 2, 3]
+        name = 'URL'
+        kwargs = {
+            'vscheme': 'https',
+            'vnetloc': 'www.test.test',
+            'vpath': '/test.html',
+            'vquery': 'q=test',
+            'vfrag': 'main',
+        }
+        err = TypeError
+        msg_re = 'URL must be of type {}. Was {}.'.format(str, list)
+        self.assertRaisesRegex(err, msg_re, PV.isvalidurl, s, name, **kwargs)
+    
+    def test_isvalidurl_BadScheme(self):
+        """PV.isvalidurl() positive test."""
+        s = 'http://www.test.test/test.html?q=test#main'
+        name = 'URL'
+        kwargs = {
+            'vscheme': 'https',
+            'vnetloc': 'www.test.test',
+            'vpath': '/test.html',
+            'vquery': 'q=test',
+            'vfrag': 'main',
+        }
+        err = ValueError
+        msg_re = 'URL:scheme has invalid value\.'
+        self.assertRaisesRegex(err, msg_re, PV.isvalidurl, s, name, **kwargs)
+    
+    def test_isvalidurl_BadNetloc(self):
+        """PV.isvalidurl() positive test."""
+        s = 'https://www2.test.test/test.html?q=test#main'
+        name = 'URL'
+        kwargs = {
+            'vscheme': 'https',
+            'vnetloc': 'www.test.test',
+            'vpath': '/test.html',
+            'vquery': 'q=test',
+            'vfrag': 'main',
+        }
+        err = ValueError
+        msg_re = 'URL:netloc has invalid value\.'
+        self.assertRaisesRegex(err, msg_re, PV.isvalidurl, s, name, **kwargs)
+    
+    def test_isvalidurl_BadPath(self):
+        """PV.isvalidurl() positive test."""
+        s = 'https://www.test.test/test2.html?q=test#main'
+        name = 'URL'
+        kwargs = {
+            'vscheme': 'https',
+            'vnetloc': 'www.test.test',
+            'vpath': '/test.html',
+            'vquery': 'q=test',
+            'vfrag': 'main',
+        }
+        err = ValueError
+        msg_re = 'URL:path has invalid value\.'
+        self.assertRaisesRegex(err, msg_re, PV.isvalidurl, s, name, **kwargs)
+    
+    
+    # Tests for validate_httpjson().
+    def test_validate_httpjson_Happy(self):
+        """PV.validate_httpjson positive test."""
+        ctype = 'application/json; charset=utf-8'
+        content = """{
+            "name": "Terry Jones",
+            "type": "animal",
+            "score": 98
+        }"""
+        name = 'Test HTTPJSON'
+        val = PV.isvalidmap
+        valkwargs = {
+            'req': {
+                'name': {
+                    'val': PV.isvalid,
+                    'valkwargs': {
+                        'validtype': str,
+                    }
+                },
+                'type': {
+                    'val': PV.isvalid,
+                    'valkwargs': {
+                        'validtype': str,
+                        'enum': [
+                            'animal',
+                            'mineral',
+                            'vegetable',
+                        ],
+                    }
+                },
+                'score': {
+                    'val': PV.isvalid,
+                    'valkwargs': {
+                        'validtype': int,
+                        'min': 50,
+                        'max': 100
+                    }
+                }
+            }
+        }
+        result = PV.validate_httpjson(ctype, content, name, val, valkwargs)
+        expected = {
+            "name": "Terry Jones",
+            "type": "animal",
+            "score": 98
+        }
+        self.assertEqual(result, expected)
 
-    def test_isdataresp_CtypeIsList(self):
-        """DTest is ctype is wrong type."""
-        ctype = ['application/json',
-                 'utf-8',]
-        name = 'data response'
-        regex = "{} value must be of type {}.".format(name, dict)
-        self.assertRaisesRegex(TypeError, regex, validator.isdataresp, ctype)
 
-    def test_isdataresp_NoCharset(self):
-        """Test if missing charset."""
-        ctype = {'mediatype': 'application/json',}
-        name = 'data response'
-        regex = "{} has invalid value.".format(name)
-        self.assertRaisesRegex(ValueError, regex, validator.isdataresp, ctype)
+class NormalizeTestCase(unittest.TestCase):
+    """Test cases for pyvalidate.normalize."""
+    # Tests for canonicalize().
+    def test_canonicalize_Happy(self):
+        """Happy path bytes test for canonicalize()."""
+        text = b'Montr\xc3\xa9al'
+        expected = 'Montréal'
+        self.assertEqual(N.canonicalize(text), expected)
+        
+    def test_canonicalize_HappyStr(self):
+        """N.canonicalize() postive test: str input."""
+        text = '\u2126'
+        expected = '\u03a9'
+        self.assertEqual(N.canonicalize(text), expected)
 
-    def test_isdataresp_IsHTML(self):
-        """Test if mediatype is wrong."""
-        ctype = {'mediatype': 'text/html',
-                 'charset': 'utf-8',}
-        name = 'mediatype'
-        regex = "{} has invalid value.".format(name)
-        self.assertRaisesRegex(ValueError, regex, validator.isdataresp, ctype)
+    def test_canonicalize_BadCharacter(self): 
+        text = b'Montr\xe9al'
+        name = 'city'
+        vtype = bytes
+        encoding = 'utf_8'
+        ex = ValueError
+        pattern = 'Text was not valid {}[.]'.format(encoding)
+        self.assertRaisesRegex(ex, pattern, N.canonicalize, 
+                               text, dest_encoding=encoding)
 
-    def test_isdataresp_CharsetaIsUTF16(self):
-        """Test if charset is invalid."""
-        ctype = {'mediatype': 'application/json',
-                 'charset': 'utf-16',}
-        name = 'charset'
-        regex = "{} has invalid value.".format(name)
-        self.assertRaisesRegex(ValueError, regex, validator.isdataresp, ctype)
+    def test_canonicalize_BadForm(self): 
+        text = b'Montr\xc3\xa9al'
+        name = 'city'
+        vtype = bytes
+        encoding = 'utf_8'
+        form = 'XXX'
+        ex = ValueError
+        pattern = 'invalid normalization form'
+        self.assertRaisesRegex(ex, pattern, N.canonicalize, 
+                               text, dest_encoding=encoding, 
+                               dest_form=form)
+    
+    
+    # Tests for from_json().
+    def test_from_json_Happy(self):
+        """N.from_json() positive test."""
+        text = """{
+            "name": "Terry Jones",
+            "type": "animal",
+            "score": 98
+        }"""
+        expected = {
+            'name': 'Terry Jones',
+            'type': 'animal',
+            'score': 98,
+        }
+        self.assertEqual(N.from_json(text), expected)
+    
+    def test_from_json_BadJSON(self):
+        """N.from_json() negative test: invalid JSON."""
+        text = '{]'
+        err = TypeError
+        msg_re = 'Text was not valid JSON.'
+        self.assertRaisesRegex(err, msg_re, N.from_json, text)
+
+    
+    # Tests for from_ctype().
+    def test_from_ctype_Happy(self):
+        """N.from_ctype() positive test."""
+        s = 'application/json; charset=utf-8'
+        expected = {
+            'mediatype': 'application/json',
+            'charset': 'utf-8',
+        }
+        self.assertEqual(N.from_ctype(s), expected)
+    
+    
+    # Tests for normalize().
+    def test_normalize_Happy(self):
+        """N.normalize() positive test."""
+        s = 'application/json; charset=utf-8'
+        tf = N.from_ctype
+        expected = {
+            'mediatype': 'application/json',
+            'charset': 'utf-8',
+        }
+        self.assertEqual(N.normalize(s, tf), expected)
 

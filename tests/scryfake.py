@@ -84,6 +84,25 @@ resp = {
             }
           ]
     }''',
+    'sets_code': b'''{
+        "object": "set",
+        "id": "385e11a4-492b-4d07-b4a6-a1409ef829b8",
+        "code": "mmq",
+        "mtgo_code": "mm",
+        "tcgplayer_id": 73,
+        "name": "Mercadian Masques",
+        "uri": "https://api.scryfall.com/sets/385e11a4-492b-4d07-b4a6-a1409ef829b8",
+        "scryfall_uri": "https://scryfall.com/sets/mmq",
+        "search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Ammq&unique=prints",
+        "released_at": "1999-10-04",
+        "set_type": "expansion",
+        "card_count": 350,
+        "digital": false,
+        "foil_only": false,
+        "block_code": "mmq",
+        "block": "Masques",
+        "icon_svg_uri": "https://img.scryfall.com/sets/mmq.svg?1547442000"
+    }''',
     'cards': r'''{
         "object": "list",
         "total_cards": 233142,
@@ -933,6 +952,13 @@ def sets():
     """Return a dummy set list."""
     head = {'Content-Type': 'application/json; charset=utf-8',}
     return (resp['sets'], head)
+
+
+@app.route('/sets/mmq', methods=['GET',])
+def sets_code():
+    """Return dummy set details."""
+    head = {'Content-Type': 'application/json; charset=utf-8',}
+    return (resp['sets_code'], head)
 
 
 @app.route('/cards', methods=['GET',])
