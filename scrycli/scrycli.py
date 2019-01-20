@@ -16,106 +16,112 @@ from unicodedata import normalize
 import requests
 
 from scrycli import config
-from scrycli.validator import iscardlist, isdataresp, issetlist, isscrylist
-from scrycli.normalizer import canonicalize, normalize_ctype, normalize_json
+import scrycli.pyvalidate.pyvalidate as PV
+import scrycli.pyvalidate.normalize as PN
+
 
 # Global configuration settings.
 FQDN = config.fqdn
-vals = {
+PV.tbvals = {
     'sets': {
-        'keyfilter': 'data',
-        'form': 'NFC',
-        'mt_val': isdataresp,
-        'val': issetlist,
+        'val': PV.validate_httpjson,
+        'valkwargs': config.cvals['sf_setlist'],
+    },
+    'sets_code': {
+        'val': PV.validate_httpjson,
+        'valkwargs': config.cvals['sf_set'],
     },
     'cards': {
-        'keyfilter': 'data',
-        'form': 'NFC',
-        'mt_val': isdataresp,
-        'val': iscardlist,
+        'val': PV.validate_httpjson,
+        'valkwargs': config.cvals['sf_cardlist'],
     },
     'cards_search': {
-        'keyfilter': None,
-        'form': 'NFC',
-        'mt_val': isdataresp,
-        'val': isscrylist,
-        'valkwargs': {
-            'val': iscardlist,
-            'valkwargs': {},
-        }
+        'val': PV.validate_httpjson,
+        'valkwargs': config.cvals['sf_cardlist'],
     },
 }
 
 
-def trust_boundary(fn):
-    """Performs validation at a trust boundary. This should be used 
-    on all functions that make external calls. For scrycli, that 
-    is anything that uses a function from the requests module."""
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        result = fn(*args, **kwargs)
-        try:
-            key = fn.__name__
-            return validate(*result, key, **vals[key])
-        except KeyError:
-            raise NotImplementedError('No validator for trust boundary.')
-    return wrapper
-
-
-def validate(ctype: str, content: bytes, name='response', keyfilter=None, 
-             form=None, mt_val=None, val=None, valkwargs={}):
-    """Validate a response from Scryfall.com.
-    
-    :param ctype: The Content-Type header returned by Scryfall.com.
-    :param content: The content returned from Scryfall.com.
-    :param name: The name of the response. This is used primarily in 
-        error messages.
-    :param keyfilter: A key value used to filter unneeded data out of 
-        the response.
-    :param form: The Unicode normalization form used for 
-        canonicalization.
-    :param mt_val: The validator function used to validate the media 
-        type of the response.
-    :param val: The validator function used to validate the content 
-        of the response.
-    :return: :class:list or :class:dict, depending on the response.
-    :rtype: list or dict
+# Exceptions raised by scrycli.
+class HTTPUnknownError(Exception):
+    """Raised for unexpected HTTP status codes without another 
+    defined exception.
     """
-    # Handle ctype.
-    canon_ctype = canonicalize(ctype, 'Content-Type', str)
-    normal_ctype = normalize_ctype(canon_ctype)
-    mt_val(normal_ctype)
-    
-    # Handle content.
-    canon_content = canonicalize(content, name, bytes, 
-                                 encoding=normal_ctype['charset'], 
-                                 form=form)
-    normal_content = normalize_json(canon_content, name, keyfilter=keyfilter)
-    val(normal_content, name, **valkwargs)
-    return normal_content
+
+class HTTPRedirectError(Exception):
+    """Raised for unexpected HTTP status codes in the 3xx 
+    range. This likely means the scrycli needs to be updated.
+    """
+
+class HTTPClientError(Exception):
+    """Raised for HTTP status codes in the 4xx range. This likely 
+    means that you supplied bad input to scrycli.
+    """
+
+class HTTPServerError(Exception):
+    """Raised for HTTP status codes in the 5xx range. This likely 
+    means there is a problem at Scryfall.com's end, but very bad 
+    input to scrycli may be able to cause this.
+    """
 
 
 # API calls.
-@trust_boundary
+@PV.trust_boundary
 def sets():
     """Pull a list of sets from Scryfall.com.
     
-    :return: :class:str
-    :rtype: str
+    :return: :class:tuple of the Content-Type header and the raw 
+        response contents from Scryfall.com
+    :rtype: tuple
     
-    Warning
-    -------
-    While the return type of the sets() function is a string 
-    containing JSON data, calls to set() will get back a 
-    list of dictionaries due to the trust_boundary() decorator 
-    manipulating the data returned.
+    Warning::
+    
+        The PV.trust_boundary decorator alters the return type of 
+        this function to the PV.validate_httpjson function's 
+        return type. That return type will vary based on the 
+        data fed into it. In this case it is:
+        
+        :return: A :class:list of :class:dict that contain the 
+            details of each MtG set.
+        :rtype: list
     """
     url = FQDN + '/sets'
-    resp = requests.get(url)
+    resp = _get(url)
     return resp.headers['Content-Type'], resp.content
 
 
-@trust_boundary
+@PV.trust_boundary
+def sets_code(code: str, pretty: bool = False):
+    """Get the details for a specific set.
+    
+    :param code: The three of four letter set code.
+    :param pretty: (Optional.) Indicate whether you want the 
+        JSON to be returned in a human readable format. Only 
+        use for testing.
+    :return: :class:tuple of the Content-Type header and the raw 
+        response contents from Scryfall.com
+    :rtype: tuple
+    
+    Warning::
+    
+        The PV.trust_boundary decorator alters the return type of 
+        this function to the PV.validate_httpjson function's 
+        return type. That return type will vary based on the 
+        data fed into it. In this case it is:
+        
+        :return: A :class:dict that contains the 
+            details of a MtG set.
+        :rtype: dict
+    """
+    url = FQDN + '/sets/' + code
+    params = {}
+    if pretty:
+        params['pretty'] = True
+    resp = _get(url, params)
+    return resp.headers['Content-Type'], resp.content
+
+
+@PV.trust_boundary
 def cards(page: int = None):
     """Pull a list of cards from Scryfall.com.
     
@@ -123,22 +129,26 @@ def cards(page: int = None):
     :return: :class:str
     :rtype: str
     
-    Warning
-    -------
-    While the return type of the sets() function is a string 
-    containing JSON data, calls to set() will get back a 
-    list of dictionaries due to the trust_boundary() decorator 
-    manipulating the data returned.
+    Warning::
+    
+        The PV.trust_boundary decorator alters the return type of 
+        this function to the PV.validate_httpjson function's 
+        return type. That return type will vary based on the 
+        data fed into it. In this case it is:
+        
+        :return: A :class:list of :class:dict that contain the 
+            details of each MtG card.
+        :rtype: list
     """
     url = FQDN + '/cards'
     params = {}
     if page:
         params['page'] = page
-    resp = requests.get(url, params)
+    resp = _get(url, params)
     return resp.headers['Content-Type'], resp.content
 
 
-@trust_boundary
+@PV.trust_boundary
 def cards_search(q, unique=None, order=None, dir=None, include_extras=None, 
                  include_multilingual=None, page=None, format=None, 
                  pretty=None):
@@ -169,12 +179,16 @@ def cards_search(q, unique=None, order=None, dir=None, include_extras=None,
     need to be implemented in the client. This call will only return 
     one page at a time. 
     
-    Warning
-    -------
-    While the return type of the sets() function is a string 
-    containing JSON data, calls to set() will get back a 
-    list of dictionaries due to the trust_boundary() decorator 
-    manipulating the data returned.
+    Warning::
+    
+        The PV.trust_boundary decorator alters the return type of 
+        this function to the PV.validate_httpjson function's 
+        return type. That return type will vary based on the 
+        data fed into it. In this case it is:
+        
+        :return: A :class:dict that contains the results of 
+            the search.
+        :rtype: dict
     """
     url = FQDN + '/cards/search'
     params = {}
@@ -195,5 +209,25 @@ def cards_search(q, unique=None, order=None, dir=None, include_extras=None,
         params['format'] = format
     if pretty:
         params['pretty'] = pretty
-    resp = requests.get(url, params)
+    resp = _get(url, params)
     return resp.headers['Content-Type'], resp.content
+
+
+# Private functions.
+def _get(url: str, params: dict = {}):
+    """Make the HTTP request and handle error responses."""
+    resp = requests.get(url, params)
+    if resp.status_code != 200:
+        msg = '{}: {}'.format(resp.status_code, resp.reason)
+        if resp.status_code >= 600:
+            raise HTTPUnknownError(msg)
+        elif resp.status_code >= 500:
+            raise HTTPServerError(msg)
+        elif resp.status_code >= 400:
+            raise HTTPClientError(msg)
+        elif resp.status_code >= 300:
+            raise HTTPRedirectError(msg)
+        else:
+            raise HTTPUnknownError(msg)
+    return resp
+

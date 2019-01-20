@@ -16,7 +16,7 @@ def list_cards():
     """Print a list of MtG cards to stdout."""
     fmt = '{:<40}{:<10}{:<10}'
     cardslist = cards()
-    for card in cardslist:
+    for card in cardslist['data']:
         print(fmt.format(card['name'], card['collector_number'], card['set']))
 
 
@@ -24,7 +24,7 @@ def list_sets():
     """Print a list of Magic the Gathering (MtG) sets to stdout."""
     fmt = '{:<50}{:<8}'
     setslist = sets()
-    sorted_sets = sorted(setslist, key=itemgetter('released_at'))
+    sorted_sets = sorted(setslist['data'], key=itemgetter('released_at'))
     for set in sorted_sets:
         print(fmt.format(set['name'], set['code']))
 

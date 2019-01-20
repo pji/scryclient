@@ -5,6 +5,9 @@ utility
 
 General utilities used for scrycli.
 """
+from scrycli.pyvalidate.pyvalidate import isvalidseq
+
+
 def build_query(cardset=None):
     """Build a query for Scryfall.com's full text search.
     
@@ -40,3 +43,10 @@ def parse_manacost(s: str):
             out.append(buf)
             buf = ''
     return out
+
+
+def ismanacostlist(s, name, val, valkwargs):
+    """Validation for the scryfall.com mana cost string."""
+    mc = parse_manacost(s)
+    return isvalidseq(mc, name, val, valkwargs)
+
